@@ -133,5 +133,4 @@ dmypy.json
 Thumbs.db
 
 # Project-specific
-data/raw/
 tableau/*.twbx
