@@ -13,6 +13,9 @@ This project demonstrates real-world data analyst skills through a complete pipe
 4. How do size, rooms, and location affect price?
 5. How does Munich compare with other major cities?
 6. Which regions are rising fastest?
+7. Which areas offer the best rental yield (annual rent / property price)?
+8. Which regions show the strongest price appreciation?
+9. Which markets offer best ROI for real estate investors?
 
 ## Repository Structure
 
@@ -69,10 +72,6 @@ germany-housing-market-analysis/
    ```bash
    pip install -r requirements.txt
    ```
-
-## Project Timeline
-
-See [plan.md](plan.md) for the full 14-day execution plan with detailed daily tasks and deliverables.
 
 ## Data Sources
 
