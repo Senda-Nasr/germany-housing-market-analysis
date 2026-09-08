@@ -134,3 +134,6 @@ Thumbs.db
 
 # Project-specific
 tableau/*.twbx
+
+# Raw data (too large for GitHub, re-downloadable via src/01_download_data.py)
+data/raw/*.csv

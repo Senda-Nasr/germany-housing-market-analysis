@@ -81,17 +81,17 @@ germany-housing-market-analysis/
 ## 14-Day Execution Plan
 
 ## Day 1 — Setup + Scope
-- [ ] Create GitHub repo
+- [x] Create GitHub repo
 - [x] Create folder structure
-- [ ] Write project objective in README
-- [ ] Find 1–2 Germany housing datasets
+- [x] Write project objective in README
+- [x] Find 1–2 Germany housing datasets
 - [ ] Define KPIs
 
 ## Day 2 — Raw Data Collection
-- [ ] Download CSV files / scrape legal public data
-- [ ] Save into data/raw/
-- [ ] Inspect columns and row counts
-- [ ] Create data_dictionary.md draft
+- [x] Download CSV files / scrape legal public data
+- [x] Save into data/raw/
+- [x] Inspect columns and row counts
+- [x] Create data_dictionary.md draft
 
 ## Day 3 — Cleaning Part 1
 - [ ] Remove duplicates
