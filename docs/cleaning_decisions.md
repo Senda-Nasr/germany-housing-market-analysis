@@ -3,7 +3,7 @@
 > **Purpose:** a permanent record of every assumption and implementation decision made while cleaning the immoscout dataset, and *why* it was made. Written so that future-you (or a reviewer reading the repo) can trace any cleaning action back to its reasoning and its verified numbers.
 >
 > **Status:** living document — updated as each step of `notebooks/02_clean_data.ipynb` is completed.
-> **Last updated:** 2026-11-03 (Steps 1–5 complete and executed; Step 5 numbers confirmed in notebook output. Steps 6–7 pending).
+> **Last updated:** 2026-11-03 (**Phase 2 COMPLETE** — Steps 1–7 executed, Run-All reproducibility verified, clean CSV saved and re-read from disk).
 
 ---
 
@@ -151,17 +151,34 @@ Raw file has 8,684 distinct `regio3` values; the cleaned data has 8,681. Verifie
 
 ---
 
+### D16 — Feature engineering: `price_per_m2` unclipped; bins data-aware (Step 6, closes O6)
+
+- `price_per_m2` = `baseRent / livingSpace`. Distribution: median **7.37 €**, mean 8.74, p95 17.48, max 416.67.
+- **Unclipped by decision:** only 5 rows exceed 100 €/m² and 92 sit below 2 €/m². Clipping them would bend the headline metric; Phase 3 will use medians/quantiles that are robust to these few rows. The 92 ultra-cheap rows are a known artifact (tiny rent on large space), flagged not hidden.
+- **Size bins:** `small < 40 · medium 40–80 · large 80–130 · xl 130+` m² → counts 26,070 / 158,260 / 70,180 / 13,822. Chosen over quartile bins (54/67/87) so the medium band covers the listing-market core and labels stay round and speakable in Tableau.
+- **Room bins:** `1 · 2 · 3 · 4+` with edges 1.5/2.5/4 so 3.5-room listings count as `3 rooms` → counts 31,074 / 98,603 / 128,592 / 10,063.
+
+### D17 — Step 7 safety net is a verified no-op; file saved and re-read (Step 7, closes O7 implicitly)
+
+`dropna(subset=['baseRent', 'livingSpace', 'noRooms'])` removes **0 rows** (Steps 3–4 guarantee completeness) — kept as a cheap guard for future data versions. Final file: `data/processed/immo_data_clean.csv`, **268,332 × 43**, verified by reloading from disk: NaN total exactly **40,445** (`totalRent` only, per D10). `serviceCharge` kept with its median-filled values; the €25k-outlier question (O7) dissolves because `serviceCharge` is not used in any primary metric — noted for Phase 3 if it ever feeds a chart.
+
+### D18 — Phase 2 headline (for README/methodology)
+
+268,850 → **268,332 rows (99.81 % survive)**; 49 → **43 columns** (7 dropped for >60 % missing, 5 twin/superseded location columns, +3 engineered features). Cleaning was **conservative by design**: only provably impossible values removed; all extreme-but-plausible data retained and documented.
+
+---
+
 ## 3. Open decisions (not yet made — listed so none is forgotten)
 
 | # | Decision | Where it lands | Options on the table |
 |---|---|---|---|
-| O1 | **What to do with 40,449 missing `totalRent`** (15.07 % of the 268,332 post-Step-3 rows; 226 further rows have totalRent = 0) | Step 4 | (a) treat `baseRent` as primary price and leave totalRent alone; (b) impute; (c) drop the rows. Biggest open call of the phase. |
-| O2 | Fill strategy for other missing numerics (`yearConstructed` 21.18 %, `serviceCharge` 2.53 % + 3,389 zeros, `heatingCosts` 68.17 % + 2,725 zeros, `pricetrend` 0.68 %) | Step 4 | median fill vs leave-NaN vs column drop per column |
-| O3 | Fill strategy for text columns (`typeOfFlat` 13.61 %, `heatingType` 16.67 %, `condition` 25.46 %, `regio3`-adjacent `streetPlain`/`houseNumber` 26.38 %, `facilities` 19.67 %) | Step 4 | `'unknown'` vs most-frequent value |
-| O4 | ~~Drop `geo_bln` vs drop `regio1`; drop `geo_krs` vs drop `regio2`~~ | ~~Step 5~~ | **Closed — D14**: readable `state`/`district`/`city` built, all twins dropped |
-| O5 | Keep granular `regio3` as-is, or also build a district-level column | Step 5 / Phase 3 | thin groups make small place-slices unreliable |
-| O6 | Bins for `size_category` / `room_category` | Step 6 | to be chosen from the distribution, not arbitrary |
-| O7 | Whether `serviceCharge` outliers need their own bound | Step 6 (if used) | €25,000 service charge on a 14 m² flat exists in the top-10 table |
+| O1 | ~~What to do with 40,449 missing `totalRent`~~ | ~~Step 4~~ | **Closed — D10**: `baseRent` primary, `totalRent` untouched |
+| O2 | ~~Fill strategy for other missing numerics~~ | ~~Step 4~~ | **Closed — D11**: median fills (explicit list) |
+| O3 | ~~Fill strategy for text columns~~ | ~~Step 4~~ | **Closed — D11**: literal `'unknown'` |
+| O4 | ~~Drop twins~~ | ~~Step 5~~ | **Closed — D14**: `state`/`district`/`city` built, twins dropped |
+| O5 | Keep granular `city` as-is, or also aggregate to district level | Phase 3 | `district` (419) already available as the robust middle level; decide per-chart |
+| O6 | ~~Bins for `size_category` / `room_category`~~ | ~~Step 6~~ | **Closed — D16**: <40/40–80/80–130/130+ m²; 1/2/3/4+ rooms |
+| O7 | ~~`serviceCharge` outlier bound~~ | ~~Step 7~~ | **Dissolved — D17**: not used in any primary metric; revisit only if it feeds a Phase 3 chart |
 
 ### Verified missing-value profile (post-Step-3, 2026-11-03)
 
