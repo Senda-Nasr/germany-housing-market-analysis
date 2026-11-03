@@ -108,17 +108,48 @@ After Step 3, `df` is re-pointed at the cleaned frame (`df = df_clean`). *Why:* 
 
 ---
 
+## 2b. Decisions made in Step 4 (2026-11-03)
+
+### D10 — `totalRent`: keep as-is, `baseRent` becomes the primary price column (closes O1)
+
+40,449 of 268,332 rows (15.07 %) have no `totalRent`, plus 226 have `totalRent = 0`. Options considered:
+
+| Option | Rejected/chosen | Reason |
+|---|---|---|
+| **baseRent primary, totalRent untouched** (chosen) | ✅ | `baseRent` is 100 % complete; nothing fabricated; the 85 % subset where totalRent exists stays comparable gross-vs-net |
+| Impute totalRent ≈ baseRent + serviceCharge (+ heatingCosts) | ❌ | heatingCosts is 68 % empty and gets dropped → imputed totals systematically too low for ~28k rows; invents data |
+| Drop the 40,449 rows | ❌ | loses 15 % of listings, hurts small-city coverage, discards perfectly good baseRent data |
+
+Consequence for Phase 3: **all price analyses use `baseRent`**; `totalRent` analyses carry a "85 % coverage" caveat.
+
+### D11 — Fill strategy for the remaining 20 gapped columns (closes O2/O3)
+
+- **Numerics → median** (not mean — skewed distributions): `yearConstructed` (56,838 → 1972), `serviceCharge` (6,782 → 135), `pricetrend` (1,830 → 3.39), plus the second-pass five: `floor` (51,133 → 2.0), `numberOfFloors` (97,507 → 3.0), `thermalChar` (106,203 → 107), `telekomUploadSpeed` (33,281 → 40), `yearConstructedRange` (56,838 → 3.0).
+- **`serviceCharge = 0` (3,389 rows) treated as missing** and refilled with the median — a 0 € service charge is "not recorded", not "genuinely free".
+- **Text → literal `'unknown'`** (10 columns): `heatingType` 44,724, `telekomTvOffer` 32,542, `firingTypes` 56,777, `houseNumber` 70,799, `condition` 68,328, `interiorQual` 112,432, `petsAllowed` 114,351, `streetPlain` 70,794, `typeOfFlat` 36,522, `description` 19,705, `facilities` 52,777. Chosen over most-frequent-value because it keeps missingness **visible** as its own category in charts and Tableau filters instead of blending it into the dominant answer.
+- **`totalRent` is the only column that keeps NaN** (by D10). Final audit: `totalRent 40,445` is the sole entry.
+
+### D12 — pandas 3.0 dtype lesson (implementation note)
+
+The first text-fill pass matched **zero columns** because it tested `dtype == 'object'`. Under pandas 3.0.2 (this venv), string columns report dtype `str`, not `object`. Fix: detect text via `pandas.api.types.is_string_dtype()` (with an `object` fallback for 2.x compatibility). Lesson: **never assume dtype names — check them against the running version.**
+
+---
+
 ## 3. Open decisions (not yet made — listed so none is forgotten)
 
 | # | Decision | Where it lands | Options on the table |
 |---|---|---|---|
-| O1 | **What to do with ~40,500 missing `totalRent`** (15.07 %) | Step 4 | (a) treat `baseRent` as primary price and leave totalRent alone; (b) impute; (c) drop the rows. Biggest open call of the phase. |
-| O2 | Fill strategy for other missing numerics (e.g. `yearConstructed`) | Step 4 | median fill vs leave-NaN vs column drop per column |
-| O3 | Fill strategy for text columns | Step 4 | `'unknown'` vs most-frequent value |
+| O1 | **What to do with 40,449 missing `totalRent`** (15.07 % of the 268,332 post-Step-3 rows; 226 further rows have totalRent = 0) | Step 4 | (a) treat `baseRent` as primary price and leave totalRent alone; (b) impute; (c) drop the rows. Biggest open call of the phase. |
+| O2 | Fill strategy for other missing numerics (`yearConstructed` 21.18 %, `serviceCharge` 2.53 % + 3,389 zeros, `heatingCosts` 68.17 % + 2,725 zeros, `pricetrend` 0.68 %) | Step 4 | median fill vs leave-NaN vs column drop per column |
+| O3 | Fill strategy for text columns (`typeOfFlat` 13.61 %, `heatingType` 16.67 %, `condition` 25.46 %, `regio3`-adjacent `streetPlain`/`houseNumber` 26.38 %, `facilities` 19.67 %) | Step 4 | `'unknown'` vs most-frequent value |
 | O4 | Drop `geo_bln` vs drop `regio1`; drop `geo_krs` vs drop `regio2` | Step 5 | plan says build `state` from `regio1` and drop the geo_* twins |
 | O5 | Keep granular `regio3` as-is, or also build a district-level column | Step 5 / Phase 3 | thin groups make small place-slices unreliable |
 | O6 | Bins for `size_category` / `room_category` | Step 6 | to be chosen from the distribution, not arbitrary |
 | O7 | Whether `serviceCharge` outliers need their own bound | Step 6 (if used) | €25,000 service charge on a 14 m² flat exists in the top-10 table |
+
+### Verified missing-value profile (post-Step-3, 2026-11-03)
+
+27 of 49 columns have gaps. Drop-list candidates (> 60 %): `telekomHybridUploadSpeed` 83.26 %, `electricityBasePrice` 82.57 %, `electricityKwhPrice` 82.57 %, `energyEfficiencyClass` 71.05 %, `lastRefurbish` 69.98 %, `heatingCosts` 68.17 %, `noParkSpaces` 65.39 % — the same 7 columns Phase 1 identified, so the drop list is stable under cleaning. Note `heatingCosts` is > 60 % empty *and* part of the rent-arithmetic — see O2/O6 discussion when Step 4 runs.
 
 ---
 
