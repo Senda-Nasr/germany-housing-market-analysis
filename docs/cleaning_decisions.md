@@ -3,7 +3,7 @@
 > **Purpose:** a permanent record of every assumption and implementation decision made while cleaning the immoscout dataset, and *why* it was made. Written so that future-you (or a reviewer reading the repo) can trace any cleaning action back to its reasoning and its verified numbers.
 >
 > **Status:** living document — updated as each step of `notebooks/02_clean_data.ipynb` is completed.
-> **Last updated:** 2026-11-03 (Steps 1–3 complete and executed; Step 3 numbers confirmed in notebook output. Steps 4–7 pending).
+> **Last updated:** 2026-11-03 (Steps 1–5 complete and executed; Step 5 numbers confirmed in notebook output. Steps 6–7 pending).
 
 ---
 
@@ -135,6 +135,22 @@ The first text-fill pass matched **zero columns** because it tested `dtype == 'o
 
 ---
 
+### D13 — Dates: parse with the exact format, keep the 4-snapshot caveat (Step 5)
+
+`date` parsed with `pd.to_datetime(format='%b%y')` → exactly **4** datetimes: 2018-09-01 (46,761), 2019-05-01 (75,889), 2019-10-01 (66,548), 2020-02-01 (79,134). Format is specified explicitly (not inferred) so the parse fails loudly if a future download changes shape. The 4-snapshot limitation for trend questions (plan Q6/Q8/Q9) stands — see §4.
+
+### D14 — Location hierarchy: `state` ← `regio1`, `district` ← `regio2`, `city` ← `regio3`; twins dropped (Step 5, closes O4)
+
+- Readable columns built with `_` → space + strip (no umlaut work needed, per D3): `state` = 16 uniques, `district` = 419, `city` = 8,681.
+- Dropped: `geo_bln` (≡ `regio1`), `geo_krs` (≡ `regio2`), plus the raw `regio1/2/3` now superseded by the readable copies → **40 columns remain**.
+- `district` is kept deliberately as the middle level: `city` (regio3) is too granular for reliable group-bys (D2-style thin groups), so Phase 3 gets state → district → city at three resolutions.
+
+### D15 — `city` loses 3 values: 8,684 → 8,681 (verified non-issue)
+
+Raw file has 8,684 distinct `regio3` values; the cleaned data has 8,681. Verified cause: **three tiny places had all their listings among the 518 rows removed in Step 3** (e.g. a hamlet whose only listing was a 0 m² row). The `_` → space renaming itself merges nothing (collision check on raw uniques returned empty). Honest, expected loss — no action.
+
+---
+
 ## 3. Open decisions (not yet made — listed so none is forgotten)
 
 | # | Decision | Where it lands | Options on the table |
@@ -142,7 +158,7 @@ The first text-fill pass matched **zero columns** because it tested `dtype == 'o
 | O1 | **What to do with 40,449 missing `totalRent`** (15.07 % of the 268,332 post-Step-3 rows; 226 further rows have totalRent = 0) | Step 4 | (a) treat `baseRent` as primary price and leave totalRent alone; (b) impute; (c) drop the rows. Biggest open call of the phase. |
 | O2 | Fill strategy for other missing numerics (`yearConstructed` 21.18 %, `serviceCharge` 2.53 % + 3,389 zeros, `heatingCosts` 68.17 % + 2,725 zeros, `pricetrend` 0.68 %) | Step 4 | median fill vs leave-NaN vs column drop per column |
 | O3 | Fill strategy for text columns (`typeOfFlat` 13.61 %, `heatingType` 16.67 %, `condition` 25.46 %, `regio3`-adjacent `streetPlain`/`houseNumber` 26.38 %, `facilities` 19.67 %) | Step 4 | `'unknown'` vs most-frequent value |
-| O4 | Drop `geo_bln` vs drop `regio1`; drop `geo_krs` vs drop `regio2` | Step 5 | plan says build `state` from `regio1` and drop the geo_* twins |
+| O4 | ~~Drop `geo_bln` vs drop `regio1`; drop `geo_krs` vs drop `regio2`~~ | ~~Step 5~~ | **Closed — D14**: readable `state`/`district`/`city` built, all twins dropped |
 | O5 | Keep granular `regio3` as-is, or also build a district-level column | Step 5 / Phase 3 | thin groups make small place-slices unreliable |
 | O6 | Bins for `size_category` / `room_category` | Step 6 | to be chosen from the distribution, not arbitrary |
 | O7 | Whether `serviceCharge` outliers need their own bound | Step 6 (if used) | €25,000 service charge on a 14 m² flat exists in the top-10 table |
