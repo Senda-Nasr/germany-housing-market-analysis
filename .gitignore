@@ -137,3 +137,5 @@ tableau/*.twbx
 
 # Raw data (too large for GitHub, re-downloadable via src/01_download_data.py)
 data/raw/*.csv
+# Processed data (277 MB — too large for GitHub, re-buildable via notebooks/02_clean_data.ipynb)
+data/processed/*.csv
